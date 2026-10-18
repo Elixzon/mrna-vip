@@ -65,8 +65,6 @@ git clone https://github.com/Elixzon/mrna-vip.git
 cd mrna-vip
 ```
 
-Replace the placeholder with your repository URL before publishing this README.
-
 ### 2. Create and activate a virtual environment
 
 ```bash
