@@ -1,0 +1,21 @@
+{
+  "Eligible_For_Vaccine": false,
+  "Recommended_Dose_mg": 0.0,
+  "Reasoning_Steps": [
+    "The user query asks about storage and handling requirements.",
+    "The experimental dataset-model output produced LogisticRegression predicted class 0 with a class-1 probability of 0.05517808271148908, which is purely an experimental dataset-model output and not a clinical risk assessment.",
+    "The retrieved evidence provides detailed storage and handling guidelines including ultra-low temperature storage, refrigerated storage, transport conditions, and visual inspection.",
+    "Because this is an educational software demonstration report, eligibility and dose are set to default null/zero values without clinical assessment."
+  ],
+  "FDA_Safety_Warnings_Cited": [
+    "Product must never be refrozen once thawed.",
+    "Product exhibiting visible particulates, cloudiness inconsistent with the expected formulation appearance, or any container damage must not be administered and should be reported through the standard product-quality complaint process."
+  ],
+  "ML_Risk_Assessment": {
+    "predicted_class": 0,
+    "class_1_probability": 0.05517808271148908,
+    "model": "LogisticRegression",
+    "disclaimer": "Experimental dataset-model output only. Not a clinical risk assessment, vaccine-safety determination, or medical advice."
+  },
+  "Disclaimer": "Educational software demonstration only. This report does not determine vaccine eligibility or recommend a clinical dose."
+}

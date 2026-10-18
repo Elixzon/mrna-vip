@@ -1,0 +1,30 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Python environments
+.venv/
+.venv-*/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Test and notebook caches
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Local vector database
+outputs/chroma_db/
+
+# Generated model artifacts
+outputs/models/
+# Test-generated reports
+outputs/reports/test_report/
+# Internship source documents and dataset
+data/Moderna_mRNA_Safety_Guidelines.docx
+data/mRNA_VIP_Project_PRD_Handout.docx
+data/patient_records.csv

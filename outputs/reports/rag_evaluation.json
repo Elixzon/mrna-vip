@@ -1,0 +1,56 @@
+
+{
+  "project": "mRNA-VIP",
+  "module": "Retrieval-Augmented Generation (RAG)",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "vector_database": "ChromaDB",
+  "top_k": 3,
+  "indexed_chunks": 5,
+  "evaluation_questions": 5,
+  "correct_top1_retrievals": 5,
+  "top1_accuracy": 1.0,
+  "tests": [
+    {
+      "question": "What are the storage and handling requirements?",
+      "expected_section": "Section 1: Storage and Handling Requirements",
+      "retrieved_section": "Section 1: Storage and Handling Requirements",
+      "passed": true,
+      "top1_distance": 0.7139
+    },
+    {
+      "question": "What are the recommended doses for different age groups?",
+      "expected_section": "Section 2: Dosing Guidance by Age Band",
+      "retrieved_section": "Section 2: Dosing Guidance by Age Band",
+      "passed": true,
+      "top1_distance": 0.3206
+    },
+    {
+      "question": "What contraindications and safety warnings are listed?",
+      "expected_section": "Section 3: Contraindications and Warnings",
+      "retrieved_section": "Section 3: Contraindications and Warnings",
+      "passed": true,
+      "top1_distance": 0.4063
+    },
+    {
+      "question": "How should adverse events be documented and reported?",
+      "expected_section": "Section 4: Adverse Event Documentation",
+      "retrieved_section": "Section 4: Adverse Event Documentation",
+      "passed": true,
+      "top1_distance": 0.2695
+    },
+    {
+      "question": "What should happen after a temperature excursion?",
+      "expected_section": "Section 1: Storage and Handling Requirements",
+      "retrieved_section": "Section 1: Storage and Handling Requirements",
+      "passed": true,
+      "top1_distance": 0.6513
+    }
+  ],
+  "notes": [
+    "Top-1 accuracy is based on five manually defined evaluation questions.",
+    "Distance values are semantic-search distances; lower values generally indicate closer matches.",
+    "The first-ranked section matched the expected section for all five questions.",
+    "This small evaluation set does not establish clinical accuracy or safety.",
+    "The source material is for an educational software project, not clinical decision-making."
+  ]
+}
