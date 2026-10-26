@@ -1,24 +1,46 @@
+
 """Local semantic retrieval for the mRNA-VIP educational reference."""
 
-from pathlib import Path
+import csv
+import hashlib
 import re
 import time
+from datetime import datetime
+from pathlib import Path
 
 import chromadb
 from sentence_transformers import SentenceTransformer
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 GUIDELINES_PATH = PROJECT_ROOT / "data" / "mrna_safety_guidelines.txt"
-DB_PATH = PROJECT_ROOT / "outputs" / "chroma_db"
+DB_PATH = PROJECT_ROOT / "outputs" / "chroma_db_v0_5"
 COLLECTION_NAME = "mrna_safety_guidelines"
+
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
-CHUNK_SIZE = 300
+CHUNK_SIZE = 400
 CHUNK_OVERLAP = 50
 
 _model = None
 _client = None
 _collection = None
+
+
+def log_query_latency(query: str, latency_ms: float) -> None:
+    """Append query latency to a persistent CSV log."""
+    log_path = PROJECT_ROOT / "outputs" / "rag_latency_log.csv"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    file_exists = log_path.exists()
+
+    with log_path.open("a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        if not file_exists:
+            writer.writerow(["timestamp", "question", "latency_ms"])
+        writer.writerow([
+            datetime.now().isoformat(timespec="seconds"),
+            query,
+            round(latency_ms, 2),
+        ])
 
 
 def load_guidelines(path: Path = GUIDELINES_PATH) -> str:
@@ -41,8 +63,26 @@ def split_into_paragraphs(text: str) -> list[str]:
     ]
 
 
-def chunk_document(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
-    """Create section-aware chunks from the source paragraphs."""
+def get_embedding_model():
+    """Load the embedding model once per Python process."""
+    global _model
+
+    if _model is None:
+        _model = SentenceTransformer(EMBEDDING_MODEL)
+        _model.max_seq_length = 512
+        _model.tokenizer.model_max_length = 512
+
+    return _model
+
+
+def chunk_document(text, chunk_size=400, overlap=50):
+    """
+    Split guideline text into overlapping token chunks.
+
+    Each chunk is associated with the section containing its first token.
+    Short sections can produce chunks below the target size; source text
+    is never padded or invented to meet a minimum.
+    """
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive.")
     if overlap < 0 or overlap >= chunk_size:
@@ -50,98 +90,80 @@ def chunk_document(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
             "overlap must be non-negative and smaller than chunk_size."
         )
 
-    paragraphs = split_into_paragraphs(text)
+    if not text or not text.strip():
+        return []
+
+    model = get_embedding_model()
+    tokenizer = model.tokenizer
+
+    # Split at section headings to keep chunk content within its section.
+    section_pattern = r"(?=Section \d+:)"
+    parts = re.split(section_pattern, text)
+
     chunks = []
-    current_section = "General"
-    current_words = []
-    current_start = 0
-    total_words = 0
+    step = chunk_size - overlap
 
-    def save_chunk(words, start_word, end_word, section):
-        if not words:
-            return
-
-        chunks.append({
-            "chunk_id": len(chunks),
-            "text": " ".join(words),
-            "source": GUIDELINES_PATH.name,
-            "section": section,
-            "start_word": start_word,
-            "end_word": end_word,
-        })
-
-    for paragraph in paragraphs:
-        heading_match = re.match(r"Section\s+\d+:", paragraph, re.IGNORECASE)
-
-        if heading_match:
-            save_chunk(
-                current_words, current_start, total_words, current_section
-            )
-            current_words = []
-            current_section = paragraph.strip()
-            current_start = total_words
-
-        paragraph_words = paragraph.split()
-
-        if not paragraph_words:
+    for part in parts:
+        part = part.strip()
+        if not part:
             continue
 
-        if len(paragraph_words) > chunk_size:
-            save_chunk(
-                current_words, current_start, total_words, current_section
-            )
-            current_words = []
-            position = 0
+        first_line = part.splitlines()[0].strip()
+        if re.match(r"Section \d+:", first_line):
+            section = first_line
+        else:
+            section = "Introduction"
 
-            while position < len(paragraph_words):
-                piece = paragraph_words[position:position + chunk_size]
-                save_chunk(
-                    piece,
-                    total_words + position,
-                    total_words + position + len(piece),
-                    current_section,
-                )
-                if position + chunk_size >= len(paragraph_words):
-                    break
-                position += chunk_size - overlap
+        token_ids = tokenizer.encode(
+            part,
+            add_special_tokens=False,
+            truncation=False,
+            verbose=False,
+        )
 
-            total_words += len(paragraph_words)
-            current_start = total_words
-            continue
+        position = 0
 
-        if current_words and len(current_words) + len(paragraph_words) > chunk_size:
-            save_chunk(
-                current_words, current_start, total_words, current_section
-            )
-            current_words = current_words[-overlap:] if overlap else []
-            current_start = total_words - len(current_words)
+        while position < len(token_ids):
+            piece = token_ids[position:position + chunk_size]
+            if not piece:
+                break
 
-        if not current_words:
-            current_start = total_words
+            chunk_text = tokenizer.decode(
+                piece,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=True,
+            ).strip()
 
-        current_words.extend(paragraph_words)
-        total_words += len(paragraph_words)
+            if chunk_text:
+                chunks.append({
+                    "chunk_id": len(chunks),
+                    "text": chunk_text,
+                    "source": GUIDELINES_PATH.name,
+                    "section": section,
+                    "start_word": position,
+                    "end_word": position + len(piece),
+                })
 
-    save_chunk(current_words, current_start, total_words, current_section)
+            if position + chunk_size >= len(token_ids):
+                break
+
+            position += step
 
     return chunks
-def get_embedding_model():
-    """Load the embedding model once per Python process."""
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-    return _model
 
 
 def build_vector_database(reset: bool = False):
     """Build or reuse a persistent local ChromaDB collection."""
     global _client, _collection
 
+    source_text = load_guidelines()
+    source_hash = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
     chunks = chunk_document(
-        load_guidelines(),
+        source_text,
         chunk_size=CHUNK_SIZE,
         overlap=CHUNK_OVERLAP,
     )
+
     DB_PATH.mkdir(parents=True, exist_ok=True)
 
     if reset:
@@ -159,11 +181,14 @@ def build_vector_database(reset: bool = False):
 
     _collection = _client.get_or_create_collection(
         name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
+        metadata={"hnsw:space": "cosine", "source_sha256": source_hash},
     )
 
-    # Rebuild if the index is empty or its chunk count no longer matches.
-    if _collection.count() != len(chunks):
+    # Rebuild when the source document or its chunk count has changed.
+    if (
+        _collection.count() != len(chunks)
+        or _collection.metadata.get("source_sha256") != source_hash
+    ):
         try:
             _client.delete_collection(COLLECTION_NAME)
         except Exception:
@@ -171,30 +196,32 @@ def build_vector_database(reset: bool = False):
 
         _collection = _client.create_collection(
             name=COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
+            metadata={"hnsw:space": "cosine", "source_sha256": source_hash},
         )
-        model = get_embedding_model()
-        texts = [chunk["text"] for chunk in chunks]
-        embeddings = model.encode(
-            texts,
-            normalize_embeddings=True,
-            show_progress_bar=True,
-        ).tolist()
 
-        _collection.add(
-            ids=[f"chunk-{chunk['chunk_id']}" for chunk in chunks],
-            documents=texts,
-            embeddings=embeddings,
-            metadatas=[
-                {
-                    "source": chunk["source"],
-                    "section": chunk["section"],
-                    "start_word": chunk["start_word"],
-                    "end_word": chunk["end_word"],
-                }
-                for chunk in chunks
-            ],
-        )
+        if chunks:
+            model = get_embedding_model()
+            texts = [chunk["text"] for chunk in chunks]
+            embeddings = model.encode(
+                texts,
+                normalize_embeddings=True,
+                show_progress_bar=True,
+            ).tolist()
+
+            _collection.add(
+                ids=[f"chunk-{chunk['chunk_id']}" for chunk in chunks],
+                documents=texts,
+                embeddings=embeddings,
+                metadatas=[
+                    {
+                        "source": chunk["source"],
+                        "section": chunk["section"],
+                        "start_word": chunk["start_word"],
+                        "end_word": chunk["end_word"],
+                    }
+                    for chunk in chunks
+                ],
+            )
 
     return _client, _collection
 
@@ -202,6 +229,7 @@ def build_vector_database(reset: bool = False):
 def retrieve(query: str, top_k: int = 3) -> dict:
     """Retrieve relevant chunks and measure query latency."""
     query = query.strip()
+
     if not query:
         raise ValueError("Query must not be empty.")
     if top_k < 1:
@@ -211,28 +239,34 @@ def retrieve(query: str, top_k: int = 3) -> dict:
     model = get_embedding_model()
     _, collection = build_vector_database()
 
+    if collection.count() == 0:
+        log_query_latency(query, 0.0)
+        return {"query": query, "matches": [], "latency_ms": 0.0}
+
     start_time = time.perf_counter()
+
     query_embedding = model.encode(
         [query],
         normalize_embeddings=True,
         show_progress_bar=False,
     ).tolist()
+
     results = collection.query(
         query_embeddings=query_embedding,
         n_results=min(top_k, collection.count()),
         include=["documents", "metadatas", "distances"],
     )
+
     latency_ms = (time.perf_counter() - start_time) * 1000
+    log_query_latency(query, latency_ms)
 
     matches = []
     for i, document in enumerate(results["documents"][0]):
-        matches.append(
-            {
-                "text": document,
-                "metadata": results["metadatas"][0][i],
-                "distance": results["distances"][0][i],
-            }
-        )
+        matches.append({
+            "text": document,
+            "metadata": results["metadatas"][0][i],
+            "distance": results["distances"][0][i],
+        })
 
     return {
         "query": query,
@@ -241,11 +275,27 @@ def retrieve(query: str, top_k: int = 3) -> dict:
     }
 
 
+def query_guidelines(question: str, k: int = 3) -> list[dict]:
+    """Return the top-k relevant guideline chunks for a question."""
+    if not question or not question.strip():
+        raise ValueError("Question cannot be empty.")
+    if k < 1:
+        raise ValueError("k must be at least 1.")
+
+    result = retrieve(question, top_k=k)
+    return result["matches"]
+
+
 if __name__ == "__main__":
     _, collection = build_vector_database(reset=True)
     print(f"Indexed chunks: {collection.count()}")
-    result = retrieve("What are the storage and handling requirements?", top_k=3)
+
+    result = retrieve(
+        "What are the storage and handling requirements?",
+        top_k=3,
+    )
     print(f"Query latency: {result['latency_ms']} ms")
+
     for rank, match in enumerate(result["matches"], start=1):
         print(f"\nRank {rank} | {match['metadata']['section']}")
         print(f"Distance: {match['distance']:.4f}")

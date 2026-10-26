@@ -13,6 +13,21 @@ FIGURE_DIR = PROJECT_ROOT / "outputs" / "figures"
 VALID_NUCLEOTIDES = set("ACGU")
 MIN_SEQUENCE_LENGTH = 5
 MAX_SEQUENCE_LENGTH = 50
+EMBEDDING_DIM = 8
+
+# Toy embedding table for the four RNA nucleotide bases.
+_rng = np.random.default_rng(42)
+EMBEDDING_TABLE = {
+    base: _rng.normal(size=EMBEDDING_DIM)
+    for base in "ACGU"
+}
+
+
+def encode_sequence(sequence: str) -> np.ndarray:
+    """Encode an RNA sequence as a (seq_len, embedding_dim) matrix."""
+    sequence = validate_sequence(sequence)
+    return np.stack([EMBEDDING_TABLE[base] for base in sequence])
+
 
 
 def validate_sequence(sequence: str) -> str:

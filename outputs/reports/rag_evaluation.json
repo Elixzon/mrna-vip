@@ -1,4 +1,3 @@
-
 {
   "project": "mRNA-VIP",
   "module": "Retrieval-Augmented Generation (RAG)",
@@ -9,47 +8,61 @@
   "evaluation_questions": 5,
   "correct_top1_retrievals": 5,
   "top1_accuracy": 1.0,
+  "mean_latency_ms": 99.79,
+  "median_latency_ms": 120.23,
+  "min_latency_ms": 37.55,
+  "max_latency_ms": 173.43,
+  "evaluation_timestamp_utc": "2026-10-26T08:37:31.983642+00:00",
   "tests": [
     {
       "question": "What are the storage and handling requirements?",
       "expected_section": "Section 1: Storage and Handling Requirements",
       "retrieved_section": "Section 1: Storage and Handling Requirements",
       "passed": true,
-      "top1_distance": 0.7139
+      "top1_distance": 0.705,
+      "latency_ms": 173.43,
+      "matches_returned": 3
     },
     {
-      "question": "What are the recommended doses for different age groups?",
+      "question": "What dosing guidance is described for different age groups?",
       "expected_section": "Section 2: Dosing Guidance by Age Band",
       "retrieved_section": "Section 2: Dosing Guidance by Age Band",
       "passed": true,
-      "top1_distance": 0.3206
+      "top1_distance": 0.3704,
+      "latency_ms": 127.96,
+      "matches_returned": 3
     },
     {
-      "question": "What contraindications and safety warnings are listed?",
+      "question": "What contraindications and safety warnings are described?",
       "expected_section": "Section 3: Contraindications and Warnings",
       "retrieved_section": "Section 3: Contraindications and Warnings",
       "passed": true,
-      "top1_distance": 0.4063
+      "top1_distance": 0.3952,
+      "latency_ms": 37.55,
+      "matches_returned": 3
     },
     {
       "question": "How should adverse events be documented and reported?",
       "expected_section": "Section 4: Adverse Event Documentation",
       "retrieved_section": "Section 4: Adverse Event Documentation",
       "passed": true,
-      "top1_distance": 0.2695
+      "top1_distance": 0.2695,
+      "latency_ms": 120.23,
+      "matches_returned": 3
     },
     {
       "question": "What should happen after a temperature excursion?",
       "expected_section": "Section 1: Storage and Handling Requirements",
       "retrieved_section": "Section 1: Storage and Handling Requirements",
       "passed": true,
-      "top1_distance": 0.6513
+      "top1_distance": 0.677,
+      "latency_ms": 39.8,
+      "matches_returned": 3
     }
   ],
   "notes": [
-    "Top-1 accuracy is based on five manually defined evaluation questions.",
-    "Distance values are semantic-search distances; lower values generally indicate closer matches.",
-    "The first-ranked section matched the expected section for all five questions.",
+    "Top-1 accuracy measures expected-section matching on five manually defined questions.",
+    "Latency is measured locally and may vary between runs.",
     "This small evaluation set does not establish clinical accuracy or safety.",
     "The source material is for an educational software project, not clinical decision-making."
   ]

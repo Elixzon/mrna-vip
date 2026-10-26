@@ -9,7 +9,11 @@ from typing import Any
 
 from dotenv import load_dotenv
 from google import genai
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from pydantic import ValidationError
+
+from src.schemas import ClinicalSafetyReport
+
 
 from src.rag_index import retrieve
 from src.risk_predictor import predict_reaction_risk
@@ -28,17 +32,11 @@ ML_DISCLAIMER = (
 )
 
 
-class SafetyReport(BaseModel):
-    """Schema for the final educational report."""
 
-    model_config = ConfigDict(extra="forbid")
+class SafetyReport(ClinicalSafetyReport):
+    """Backward-compatible alias for the PRD report schema."""
 
-    Eligible_For_Vaccine: bool
-    Recommended_Dose_mg: float = Field(ge=0)
-    Reasoning_Steps: list[str]
-    FDA_Safety_Warnings_Cited: list[str]
-    ML_Risk_Assessment: dict[str, Any] = Field(default_factory=dict)
-    Disclaimer: str
+
 
 
 def validate_report(
@@ -85,21 +83,23 @@ def validate_report(
             "Unsupported source excerpts were removed during validation."
         )
 
+
     return SafetyReport(
         Eligible_For_Vaccine=False,
         Recommended_Dose_mg=0.0,
         Reasoning_Steps=reasons,
         FDA_Safety_Warnings_Cited=verified_citations,
-        ML_Risk_Assessment=report.ML_Risk_Assessment,
         Disclaimer=DISCLAIMER,
     )
+
+
 
 
 def save_report(
     report: SafetyReport,
     output_dir: Path,
 ) -> tuple[Path, Path]:
-    """Save a report in JSON and Markdown formats."""
+    """Save the five-field educational report as JSON and Markdown."""
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -110,18 +110,6 @@ def save_report(
         json.dumps(report.model_dump(), indent=2),
         encoding="utf-8",
     )
-
-    ml = report.ML_Risk_Assessment
-    if ml:
-        ml_text = (
-            f"- Model: {ml.get('model', 'Not provided')}\n"
-            f"- Predicted class: {ml.get('predicted_class', 'Not provided')}\n"
-            f"- Class-1 probability: "
-            f"{ml.get('class_1_probability', 'Not provided')}\n"
-            f"- Interpretation: {ml.get('disclaimer', ML_DISCLAIMER)}"
-        )
-    else:
-        ml_text = "- No ML prediction was supplied."
 
     markdown = f"""# mRNA-VIP Educational Safety Report
 
@@ -134,10 +122,6 @@ def save_report(
 ## Dose field
 
 {report.Recommended_Dose_mg} mg
-
-## ML model output
-
-{ml_text}
 
 ## Reasoning steps
 
@@ -156,6 +140,7 @@ def save_report(
 
     markdown_path.write_text(markdown, encoding="utf-8")
     return json_path, markdown_path
+
 
 
 def retrieve_guideline_evidence(query: str) -> dict:
@@ -181,24 +166,38 @@ def retrieve_guideline_evidence(query: str) -> dict:
     }
 
 
+
 def _fallback_report(
     evidence: str,
     reason: str,
     ml_prediction: dict | None = None,
 ) -> SafetyReport:
-    """Return a safe report if retrieval or generation is unavailable."""
+    """Return a safe five-field report if generation is unavailable."""
+
+    reasoning_steps = [
+        "Educational demonstration only; no clinical assessment was made.",
+        reason,
+    ]
+
+    if ml_prediction:
+        reasoning_steps.append(
+            "An experimental dataset-model result was supplied separately; "
+            "it is not a clinical risk assessment."
+        )
+
+    if not evidence.strip():
+        reasoning_steps.append(
+            "No retrieved guideline evidence was available to support claims."
+        )
 
     return SafetyReport(
         Eligible_For_Vaccine=False,
         Recommended_Dose_mg=0.0,
-        Reasoning_Steps=[
-            "Educational demonstration only; no clinical assessment was made.",
-            reason,
-        ],
+        Reasoning_Steps=reasoning_steps,
         FDA_Safety_Warnings_Cited=[],
-        ML_Risk_Assessment=ml_prediction or {},
         Disclaimer=DISCLAIMER,
     )
+
 
 
 def _ml_summary(ml_prediction: dict | None) -> str:
@@ -337,13 +336,8 @@ Rules:
                 if not response.text:
                     raise ValueError("Gemini returned an empty response.")
 
-                candidate = SafetyReport.model_validate_json(response.text)
+                candidate = ClinicalSafetyReport.model_validate_json(response.text)
 
-                # Preserve the exact local ML result; never trust generated
-                # text to modify the supplied prediction.
-                candidate = candidate.model_copy(
-                    update={"ML_Risk_Assessment": ml_prediction}
-                )
 
                 report = validate_report(
                     report=candidate,
@@ -436,7 +430,7 @@ if __name__ == "__main__":
 
     print("Generation status:", metadata["generation_status"])
     print("RAG evidence found:", metadata["evidence_found"])
-    print("ML prediction included:", bool(report.ML_Risk_Assessment))
+    print("ML prediction supplied:", bool(prediction))
     print("Eligibility:", report.Eligible_For_Vaccine)
     print("Dose:", report.Recommended_Dose_mg)
     print("JSON report:", json_path)

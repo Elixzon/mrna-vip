@@ -1,0 +1,40 @@
+timestamp,question,latency_ms
+2026-10-23T15:17:04,How should adverse events be documented?,679.55
+2026-10-23T15:55:45,storage and handling requirements,553.29
+2026-10-23T15:55:45,adverse reaction reporting,123.96
+2026-10-23T16:32:54,storage and handling requirements,680.44
+2026-10-23T16:32:54,adverse reaction reporting,123.93
+2026-10-23T16:39:30,storage and handling requirements,217.3
+2026-10-23T16:39:30,adverse reaction reporting,117.31
+2026-10-23T16:43:12,storage and handling requirements,174.99
+2026-10-23T16:43:12,adverse reaction reporting,129.83
+2026-10-23T16:44:04,storage and handling requirements,534.04
+2026-10-23T16:44:04,adverse reaction reporting,120.66
+2026-10-23T16:48:21,What storage and handling requirements are described in the safety guidelines?,707.67
+2026-10-23T16:52:14,What are the storage and handling requirements?,169.85
+2026-10-23T16:54:33,What are the storage and handling requirements?,226.86
+2026-10-23T16:54:33,What dosing guidance is described for different age groups?,122.22
+2026-10-23T16:54:33,What contraindications and safety warnings are described?,33.57
+2026-10-23T16:54:33,How should adverse events be documented and reported?,106.48
+2026-10-23T16:54:33,What should happen after a temperature excursion?,30.37
+2026-10-26T13:43:12,What are the storage and handling requirements?,229.12
+2026-10-26T13:43:12,What dosing guidance is described for different age groups?,121.0
+2026-10-26T13:43:12,What contraindications and safety warnings are described?,33.11
+2026-10-26T13:43:12,How should adverse events be documented and reported?,118.73
+2026-10-26T13:43:12,What should happen after a temperature excursion?,33.75
+2026-10-26T13:46:32,storage and handling requirements,1344.74
+2026-10-26T13:46:32,adverse reaction reporting,11.12
+2026-10-26T14:00:19,storage and handling requirements,1587.01
+2026-10-26T14:00:19,adverse reaction reporting,11.55
+2026-10-26T14:01:25,What are the storage and handling requirements?,253.83
+2026-10-26T14:01:25,What dosing guidance is described for different age groups?,160.8
+2026-10-26T14:01:25,What contraindications and safety warnings are described?,36.23
+2026-10-26T14:01:26,How should adverse events be documented and reported?,142.06
+2026-10-26T14:01:26,What should happen after a temperature excursion?,36.48
+2026-10-26T14:07:06,storage and handling requirements,1145.98
+2026-10-26T14:07:06,adverse reaction reporting,149.28
+2026-10-26T14:07:31,What are the storage and handling requirements?,173.43
+2026-10-26T14:07:31,What dosing guidance is described for different age groups?,127.96
+2026-10-26T14:07:31,What contraindications and safety warnings are described?,37.55
+2026-10-26T14:07:31,How should adverse events be documented and reported?,120.23
+2026-10-26T14:07:31,What should happen after a temperature excursion?,39.8

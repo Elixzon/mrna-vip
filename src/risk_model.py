@@ -12,6 +12,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
     classification_report,
+    confusion_matrix,
     f1_score,
     roc_auc_score,
     roc_curve,
@@ -31,6 +32,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 FIGURE_DIR = OUTPUT_DIR / "figures"
 MODEL_DIR = OUTPUT_DIR / "models"
+REPORT_DIR = OUTPUT_DIR / "classification_reports"
 
 RANDOM_STATE = 42
 TARGET = "Reaction_Score"
@@ -174,6 +176,19 @@ def train_and_evaluate() -> None:
         print(f"F1-score: {metrics['f1']:.3f}")
         print(f"ROC-AUC:  {metrics['roc_auc']:.3f}")
         print(metrics["report"])
+        safe_name = name.lower().replace(" ", "_")
+
+        report_path = REPORT_DIR / f"{safe_name}_classification_report.txt"
+        REPORT_DIR.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(metrics["report"], encoding="utf-8")
+
+        matrix = confusion_matrix(y_test, metrics["predictions"])
+        matrix_path = OUTPUT_DIR / f"{safe_name}_confusion_matrix.csv"
+        pd.DataFrame(
+            matrix,
+            index=["Actual 0", "Actual 1"],
+            columns=["Predicted 0", "Predicted 1"],
+        ).to_csv(matrix_path, index=True)
 
         ConfusionMatrixDisplay.from_predictions(
             y_test,
@@ -226,8 +241,12 @@ def train_and_evaluate() -> None:
 
         # Select by F1-score, as specified in the project handout.
     best_name = max(results, key=lambda name: results[name]["f1"])
-    best_model_path = MODEL_DIR / "best_risk_model.joblib"
+    best_model_path = OUTPUT_DIR / "risk_model.joblib"
     joblib.dump(fitted_models[best_name], best_model_path)
+
+     # Also keep the existing model path for compatibility.
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    joblib.dump(fitted_models[best_name], MODEL_DIR / "best_risk_model.joblib")
     print(f"\n{'=' * 60}")
     print("MODEL COMPARISON")
     print(comparison.round(3).to_string())

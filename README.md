@@ -56,51 +56,55 @@ mrna-vip/
 └── README.md
 ```
 
-## Setup
+## Setup (macOS)
 
-### 1. Clone the repository
+The supported project environment is Python 3.12 in the repository-local
+`.venv`. Use that interpreter consistently for package management, tests, RAG
+evaluation, and Streamlit so NumPy and PyArrow stay compatible.
 
 ```bash
-git clone https://github.com/Elixzon/mrna-vip.git
 cd mrna-vip
-```
-
-### 2. Create and activate a virtual environment
-
-```bash
-python3.12 -m venv .venv
+python3.12 -m venv .venv  # only if .venv does not already exist
 source .venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
+python --version  # should report Python 3.12.x
 python -m pip install -r requirements.txt
 ```
 
-### 4. Configure the environment
+The project constraints keep NumPy below 2 and PyArrow on 19.x, a combination
+verified with this project’s Streamlit dashboard and ML/RAG dependencies.
+Never install project packages into macOS or Homebrew Python.
 
-Create a local `.env` file using `.env.example` as a template. Add your own Gemini API key if you want to enable live report generation.
+Create `.env` from `.env.example` only if you need optional Gemini report
+generation. Keep API keys private; `.env` is ignored by Git.
 
-Never commit `.env` or expose API keys in source code, screenshots, logs, or public repositories.
+## Run the project
 
-### 5. Run the dashboard
+From the repository root, use the same local interpreter:
 
 ```bash
-streamlit run src/dashboard.py
+.venv/bin/python -m pytest -v
+.venv/bin/python -m src.evaluate_rag
+.venv/bin/python -m streamlit run src/dashboard.py
 ```
 
-Follow the local URL printed in the terminal.
+The evaluator rebuilds the Chroma collection when the source document changes,
+then writes measured results to `outputs/rag_test_results.csv` and
+`outputs/reports/rag_evaluation.json`. The selected Chroma 0.5 environment
+stores its index under `outputs/chroma_db_v0_5/`; older Chroma data under
+`outputs/chroma_db/` is preserved. The dashboard reads those evaluation
+artifacts and available figures and model artifacts from `outputs/`; missing
+optional files are identified in the dashboard.
 
 ## Running Tests
 
-Run the test suite from the project root:
+Run the test suite with the project interpreter from the repository root:
 
 ```bash
-python -m pytest -v
+.venv/bin/python -m pytest -v
 ```
 
-Latest recorded test run: **32 passed, 4 warnings**. The warnings originate from ChromaDB's use of a deprecated Pydantic interface. Re-run the tests to verify the result in your current environment.
+The project’s PyTorch constraint currently targets Python 3.12. Use `.venv`
+rather than `.venv-1` (Python 3.13) for the supported setup.
 
 ## Model Evaluation
 
@@ -122,6 +126,7 @@ Latency measurements depend on model initialization, hardware, network condition
 - Predictions must not be used to assess an individual's actual vaccine risk.
 - Eligibility is set to false and the displayed dose is set to zero by the report validation safeguards; these are software safety defaults, not clinical recommendations.
 - The attention implementation uses randomly initialized projection weights. Its heatmap is illustrative and does not establish biological meaning.
+- The RAG evaluation uses five manually defined questions. Retrieval accuracy and timing are small engineering checks, not clinical validation or safety evidence.
 - Guideline citations are checked against retrieved text supplied with this project. This does not independently verify the text against current FDA publications or establish regulatory approval.
 - The RAG system may retrieve incomplete or irrelevant evidence.
 - Generated reports can contain errors despite schema validation.

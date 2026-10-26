@@ -15,7 +15,7 @@ def sample_report():
         FDA_Safety_Warnings_Cited=[
             "Monitor for adverse reactions."
         ],
-        ML_Risk_Assessment={"predicted_class": 1},
+
         Disclaimer="Original disclaimer",
     )
 
@@ -110,4 +110,10 @@ def test_saved_json_preserves_report_fields(tmp_path, sample_report):
 
     assert saved["Eligible_For_Vaccine"] is True
     assert saved["Recommended_Dose_mg"] == 50.0
-    assert saved["ML_Risk_Assessment"] == {"predicted_class": 1}
+    assert set(saved.keys()) == {
+    "Eligible_For_Vaccine",
+    "Recommended_Dose_mg",
+    "Reasoning_Steps",
+    "FDA_Safety_Warnings_Cited",
+    "Disclaimer",
+}
